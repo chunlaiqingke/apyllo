@@ -1,4 +1,4 @@
-PyApollo - Python Client for Ctrip's Apollo
+Apyllo - Python Client for Ctrip's Apollo
 ================
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -16,6 +16,7 @@ python setup.py install
 # Features
 * 实时同步配置
 * 灰度配置
+* 变更监听
 
 # Missing Features
 * 客户端容灾
