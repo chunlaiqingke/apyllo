@@ -8,6 +8,8 @@ fork自： filamoon/pyapollo
 新增Feature
 * **变更监听**
 
+  event的数据结构见 change.py
+
   ```python
   
     client = ApolloClient('10001')
