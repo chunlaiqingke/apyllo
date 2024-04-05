@@ -3,13 +3,16 @@ import json
 import logging
 import sys
 import threading
+from concurrent.futures import ThreadPoolExecutor
 import time
 
 import requests
 
+from change import ChangeListener, ConfigChange
+from change import *
 
 class ApolloClient(object):
-    def __init__(self, app_id, cluster='default', config_server_url='http://localhost:8080', timeout=35, ip=None):
+    def __init__(self, app_id, cluster='default', config_server_url='http://localhost:8080', timeout=90, ip=None):
         self.config_server_url = config_server_url
         self.appId = app_id
         self.cluster = cluster
@@ -19,7 +22,9 @@ class ApolloClient(object):
 
         self._stopping = False
         self._cache = {}
-        self._notification_map = {'application': -1}
+        self._notification_map = {'application': -1, 'test': -1, 'jsontest.json': -1}
+        self.changes = []
+        self.executor = ThreadPoolExecutor(max_workers=2)
 
     def init_ip(self, ip):
         if ip:
@@ -99,6 +104,7 @@ class ApolloClient(object):
         r = requests.get(url)
         if r.status_code == 200:
             data = r.json()
+            self._fireConfigChange(namespace, data['configurations'])
             self._cache[namespace] = data['configurations']
             logging.getLogger(__name__).info('Updated local cache for namespace %s release key %s: %s',
                                              namespace, data['releaseKey'],
@@ -150,6 +156,62 @@ class ApolloClient(object):
 
         logging.getLogger(__name__).info("Listener stopped!")
         self.stopped = True
+        
+        
+    def add_change_listener(self, listener):
+        self.changes.append(listener)
+
+    def _fireConfigChange(self, namespaceName, newConfig):
+        changes = self._realChanges(namespaceName, newConfig)
+        if len(changes) > 0:
+            self._notify_changes(ConfigChangeEvent(changes))
+        
+    
+    def _notify_changes(self, changeEvent):
+        for listener in self.changes:
+            self.executor.submit(listener.onChange, (changeEvent))
+            
+
+    def _realChanges(self, namespaceName, newConfig):
+        changes = self._calcPropertyChanges(namespaceName,self._cache.get(namespaceName), newConfig)
+        realChanges = {}
+        for change in changes:
+            if change.namespace == namespaceName:
+                realChanges[change.key] = change
+                
+        return realChanges
+            
+    '''
+    计算变更的配置
+    '''
+    def _calcPropertyChanges(self, namespaceName, previewConfig, currentConfig):
+        if not previewConfig:
+            previewConfig = {}
+        if not currentConfig:
+            currentConfig = {}
+            
+        previewKeys = previewConfig.keys()
+        currentKeys = currentConfig.keys()
+        
+        commonkeys = set(previewKeys).intersection(set(currentKeys))
+        newKeys = set(currentKeys).difference(set(commonkeys))
+        removeKeys = set(previewKeys).difference(set(currentKeys))
+        
+        changes = []
+        
+        for newkey in newKeys:
+            changes.append(ConfigChange(namespaceName, newkey, None, currentConfig[newkey], ChangeType.ADD))
+            
+        for removekey in removeKeys:
+            changes.append(ConfigChange(namespaceName, removekey, previewConfig[removekey], None, ChangeType.DELETE))
+            
+        for commonkey in commonkeys:
+            newValue = currentConfig[commonkey]
+            oldValue = previewConfig[commonkey]
+            if newValue != oldValue:
+                changes.append(ConfigChange(namespaceName, commonkey, oldValue, newValue, ChangeType.MODIFY))
+                
+        return changes
 
 
 if __name__ == '__main__':
@@ -162,7 +224,11 @@ if __name__ == '__main__':
     ch.setFormatter(formatter)
     root.addHandler(ch)
 
-    client = ApolloClient('pycrawler')
+    client = ApolloClient('10001')
+    
+    listener = ChangeListener()
+    listener.onChange = lambda event: print(f'onchange: {event.changes}')
+    client.add_change_listener(listener)
     client.start()
     if sys.version_info[0] < 3:
         v = raw_input('Press any key to quit...')
