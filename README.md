@@ -16,7 +16,7 @@ python setup.py install
 # Features
 * 实时同步配置
 * 灰度配置
-* 变更监听
+* **变更监听**
 
 # Missing Features
 * 客户端容灾
