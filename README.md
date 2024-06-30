@@ -1,45 +1,25 @@
-PyApollo - Python Client for Ctrip's Apollo
+Apyllo - Python Client for Ctrip's Apollo
 ================
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+fork自： filamoon/pyapollo
 
-方便Python接入配置中心框架 [Apollo](https://github.com/ctripcorp/apollo) 所开发的Python版本客户端。
-Tested with python 2.7 & 3.6
+那个老哥好像不维护了，我在这维护一下，正好现在工作是做apollo
 
-Installation
-------------
+新增Feature
+* **变更监听**
 
-``` shell
-python setup.py install
-```
+  event的数据结构见 change.py
 
-# Features
-* 实时同步配置
-* 灰度配置
-
-# Missing Features
-* 客户端容灾
-
-# Usage
-
-- 启动客户端长连接监听
-
-``` python
-client = ApolloClient(app_id=<appId>, cluster=<clusterName>, config_server_url=<configServerUrl>)
-client.start()
-```
-
-- 获取Apollo的配置
-  ```
-  client.get_value(Key, DefaultValue)
-  ```
-
-# Contribution
-  * Source Code: https://github.com/filamoon/pyapollo/
-  * Issue Tracker: https://github.com/filamoon/pyapollo/issues
+  ```python
   
-# License
-The project is licensed under the [Apache 2 license](https://github.com/zouyx/agollo/blob/master/LICENSE).
+    client = ApolloClient('10001')
+    
+    listener = ChangeListener()
+    listener.onChange = lambda event: print(f'onchange: {event.changes}')
+    client.add_change_listener(listener)
+    client.start()
+  
+  ```
 
 # Reference
 Apollo : https://github.com/ctripcorp/apollo
