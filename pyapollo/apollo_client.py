@@ -10,6 +10,7 @@ import requests
 
 from change import ChangeListener, ConfigChange
 from change import *
+from cluster import Cluster
 
 class ApolloClient(object):
     def __init__(self, app_id, cluster='default', config_server_url='http://localhost:8080', timeout=90, ip=None):
@@ -25,6 +26,7 @@ class ApolloClient(object):
         self._notification_map = {'application': -1, 'test': -1, 'jsontest.json': -1}
         self.changes = []
         self.executor = ThreadPoolExecutor(max_workers=2)
+        self.cluster = Cluster(self.config_server_url, self.ip)
 
     def init_ip(self, ip):
         if ip:
@@ -65,7 +67,7 @@ class ApolloClient(object):
     def start(self, use_eventlet=False, eventlet_monkey_patch=False, catch_signals=True):
         # First do a blocking long poll to populate the local cache, otherwise we may get racing problems
         if len(self._cache) == 0:
-            self._long_poll()
+            self._long_poll_for_cluster()
         if use_eventlet:
             import eventlet
             if eventlet_monkey_patch:
@@ -83,24 +85,48 @@ class ApolloClient(object):
     def stop(self):
         self._stopping = True
         logging.getLogger(__name__).info("Stopping listener...")
+        
+    
+    def _cached_http_get_for_cluster(self, key, default_val, namespace='application'):
+        services = self.cluster.getConfigService()
+        for service in services:
+            try:
+                self._cached_http_get(service, key, default_val, namespace)
+                break
+            except Exception as e:
+                logging.getLogger(__name__).warn("Failed to get config from %s: %s" % (service, e))
+        
+        data = self._cache[namespace]
 
-    def _cached_http_get(self, key, default_val, namespace='application'):
-        url = '{}/configfiles/json/{}/{}/{}?ip={}'.format(self.config_server_url, self.appId, self.cluster, namespace, self.ip)
+        if key in data:
+            return data[key]
+        else:
+            return default_val
+         
+
+    def _cached_http_get(self, service, key, default_val, namespace='application'):
+        url = '{}/configfiles/json/{}/{}/{}?ip={}'.format(service['instanceId'], self.appId, self.cluster, namespace, self.ip)
         r = requests.get(url)
         if r.ok:
             data = r.json()
             self._cache[namespace] = data
             logging.getLogger(__name__).info('Updated local cache for namespace %s', namespace)
         else:
-            data = self._cache[namespace]
+            raise Exception('Failed to get config from %s' % service['instanceId'])
 
-        if key in data:
-            return data[key]
-        else:
-            return default_val
 
-    def _uncached_http_get(self, namespace='application'):
-        url = '{}/configs/{}/{}/{}?ip={}'.format(self.config_server_url, self.appId, self.cluster, namespace, self.ip)
+    def _uncached_http_get_for_cluster(self, namespace='application'):
+        services = self.cluster.getConfigService()
+        for service in services:
+            try:
+                self._uncached_http_get(service, namespace)
+                break
+            except Exception as e:
+                logging.getLogger(__name__).warn("Failed to get config from %s: %s" % (service, e))
+    
+
+    def _uncached_http_get(self, service, namespace='application'):
+        url = '{}/configs/{}/{}/{}?ip={}'.format(service['instanceId'], self.appId, self.cluster, namespace, self.ip)
         r = requests.get(url)
         if r.status_code == 200:
             data = r.json()
@@ -109,13 +135,25 @@ class ApolloClient(object):
             logging.getLogger(__name__).info('Updated local cache for namespace %s release key %s: %s',
                                              namespace, data['releaseKey'],
                                              repr(self._cache[namespace]))
+        else:
+            raise Exception('Failed to get config from %s' % url)
 
     def _signal_handler(self, signal, frame):
         logging.getLogger(__name__).info('You pressed Ctrl+C!')
         self._stopping = True
+        
+    def _long_poll_for_cluster(self):
+        services = self.cluster.getConfigService()
+        for service in services:
+            try:
+                self._long_poll(service)
+                break
+            except Exception as e:
+                logging.getLogger(__name__).warn("Long polling failed from %s: %s" % (service, e))
+        time.sleep(self.timeout)
 
-    def _long_poll(self):
-        url = '{}/notifications/v2'.format(self.config_server_url)
+    def _long_poll(self, service):
+        url = '{}/notifications/v2'.format(service['instanceId'])
         notifications = []
         for key in self._notification_map:
             notification_id = self._notification_map[key]
@@ -146,13 +184,12 @@ class ApolloClient(object):
                 self._uncached_http_get(ns)
                 self._notification_map[ns] = nid
         else:
-            logging.getLogger(__name__).warn('Sleep...')
-            time.sleep(self.timeout)
+            raise Exception('Long polling returns %d: url=%s', r.status_code, r.request.url)
 
     def _listener(self):
         logging.getLogger(__name__).info('Entering listener loop...')
         while not self._stopping:
-            self._long_poll()
+            self._long_poll_for_cluster()
 
         logging.getLogger(__name__).info("Listener stopped!")
         self.stopped = True
