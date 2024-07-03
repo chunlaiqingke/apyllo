@@ -21,6 +21,7 @@ fork自： filamoon/pyapollo
   
   ```
 * **集群能力**
+
   cluster的数据结构见 cluster.py
 
   ```python
