@@ -26,7 +26,7 @@ class ApolloClient(object):
         self._notification_map = {'application': -1, 'test': -1, 'jsontest.json': -1}
         self.changes = []
         self.executor = ThreadPoolExecutor(max_workers=2)
-        self.cluster = Cluster(self.config_server_url, self.ip)
+        self.configServerCluster = Cluster(self.config_server_url, self.ip)
 
     def init_ip(self, ip):
         if ip:
@@ -88,7 +88,7 @@ class ApolloClient(object):
         
     
     def _cached_http_get_for_cluster(self, key, default_val, namespace='application'):
-        services = self.cluster.getShuffledConfigService()
+        services = self.configServerCluster.getRandomConfigService()
         for service in services:
             try:
                 self._cached_http_get(service, key, default_val, namespace)
@@ -116,7 +116,7 @@ class ApolloClient(object):
 
 
     def _uncached_http_get_for_cluster(self, namespace='application'):
-        services = self.cluster.getShuffledConfigService()
+        services = self.configServerCluster.getRandomConfigService()
         for service in services:
             try:
                 self._uncached_http_get(service, namespace)
@@ -143,7 +143,7 @@ class ApolloClient(object):
         self._stopping = True
         
     def _long_poll_for_cluster(self):
-        services = self.cluster.getShuffledConfigService()
+        services = self.configServerCluster.getRandomConfigService()
         for service in services:
             try:
                 self._long_poll(service)
