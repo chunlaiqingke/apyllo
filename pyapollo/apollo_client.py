@@ -12,6 +12,8 @@ from change import ChangeListener, ConfigChange
 from change import *
 from cluster import Cluster
 
+from local_file import LocalFileRepository
+
 class ApolloClient(object):
     def __init__(self, app_id, cluster='default', config_server_url='http://localhost:8080', timeout=90, ip=None):
         self.config_server_url = config_server_url
@@ -27,6 +29,7 @@ class ApolloClient(object):
         self.changes = []
         self.executor = ThreadPoolExecutor(max_workers=2)
         self.configServerCluster = Cluster(self.config_server_url, self.ip)
+        self.localFileRepository = LocalFileRepository(app_id, cluster)
 
     def init_ip(self, ip):
         if ip:
@@ -51,13 +54,13 @@ class ApolloClient(object):
             self._cache[namespace] = {}
             logging.getLogger(__name__).info("Add namespace '%s' to local cache", namespace)
             # This is a new namespace, need to do a blocking fetch to populate the local cache
-            self._long_poll()
+            self._long_poll_for_cluster()
 
         if key in self._cache[namespace]:
             return self._cache[namespace][key]
         else:
             if auto_fetch_on_cache_miss:
-                return self._cached_http_get(key, default_val, namespace)
+                return self._cached_http_get_for_cluster(key, default_val, namespace)
             else:
                 return default_val
 
@@ -95,6 +98,9 @@ class ApolloClient(object):
                 break
             except Exception as e:
                 logging.getLogger(__name__).warn("Failed to get config from %s: %s" % (service, e))
+        '''降级'''
+        local_data = self.localFileRepository.loadFromLocalCacheFile(namespace, "json")
+        self._cache[namespace] = local_data
         
         data = self._cache[namespace]
 
@@ -104,12 +110,13 @@ class ApolloClient(object):
             return default_val
          
 
-    def _cached_http_get(self, service, key, default_val, namespace='application'):
+    def _cached_http_get(self, service, namespace='application'):
         url = '{}/configfiles/json/{}/{}/{}?ip={}'.format(service['homepageUrl'], self.appId, self.cluster, namespace, self.ip)
         r = requests.get(url)
         if r.ok:
             data = r.json()
             self._cache[namespace] = data
+            LocalFileRepository.persistLocalCacheFile(namespace, 'json', data)
             logging.getLogger(__name__).info('Updated local cache for namespace %s', namespace)
         else:
             raise Exception('Failed to get config from %s' % service['instanceId'])
@@ -123,6 +130,9 @@ class ApolloClient(object):
                 break
             except Exception as e:
                 logging.getLogger(__name__).warn("Failed to get config from %s: %s" % (service, e))
+        '''降级'''
+        local_data = self.localFileRepository.loadFromLocalCacheFile(namespace, "properties")
+        self._cache[namespace] = local_data
     
 
     def _uncached_http_get(self, service, namespace='application'):
@@ -132,6 +142,7 @@ class ApolloClient(object):
             data = r.json()
             self._fireConfigChange(namespace, data['configurations'])
             self._cache[namespace] = data['configurations']
+            LocalFileRepository.persistLocalCacheFile(namespace, "properties", data['configurations'])
             logging.getLogger(__name__).info('Updated local cache for namespace %s release key %s: %s',
                                              namespace, data['releaseKey'],
                                              repr(self._cache[namespace]))
