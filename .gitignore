@@ -2,3 +2,6 @@
 build/
 *.pyc
 *.egg-info/
+*/__python_cache__/
+.DS_Store
+.vscode/
