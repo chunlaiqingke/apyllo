@@ -2,11 +2,8 @@
 build/
 *.pyc
 *.egg-info/
-<<<<<<< HEAD
 dist/
 */__pycache__/
-=======
 */__python_cache__/
->>>>>>> 5588dc97e24d877eb2de337883309d02b662e362
 .DS_Store
 .vscode/
