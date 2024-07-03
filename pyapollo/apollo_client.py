@@ -88,7 +88,7 @@ class ApolloClient(object):
         
     
     def _cached_http_get_for_cluster(self, key, default_val, namespace='application'):
-        services = self.cluster.getConfigService()
+        services = self.cluster.getShuffledConfigService()
         for service in services:
             try:
                 self._cached_http_get(service, key, default_val, namespace)
@@ -105,7 +105,7 @@ class ApolloClient(object):
          
 
     def _cached_http_get(self, service, key, default_val, namespace='application'):
-        url = '{}/configfiles/json/{}/{}/{}?ip={}'.format(service['instanceId'], self.appId, self.cluster, namespace, self.ip)
+        url = '{}/configfiles/json/{}/{}/{}?ip={}'.format(service['homepageUrl'], self.appId, self.cluster, namespace, self.ip)
         r = requests.get(url)
         if r.ok:
             data = r.json()
@@ -116,7 +116,7 @@ class ApolloClient(object):
 
 
     def _uncached_http_get_for_cluster(self, namespace='application'):
-        services = self.cluster.getConfigService()
+        services = self.cluster.getShuffledConfigService()
         for service in services:
             try:
                 self._uncached_http_get(service, namespace)
@@ -126,7 +126,7 @@ class ApolloClient(object):
     
 
     def _uncached_http_get(self, service, namespace='application'):
-        url = '{}/configs/{}/{}/{}?ip={}'.format(service['instanceId'], self.appId, self.cluster, namespace, self.ip)
+        url = '{}configs/{}/{}/{}?ip={}'.format(service['homepageUrl'], self.appId, self.cluster, namespace, self.ip)
         r = requests.get(url)
         if r.status_code == 200:
             data = r.json()
@@ -143,7 +143,7 @@ class ApolloClient(object):
         self._stopping = True
         
     def _long_poll_for_cluster(self):
-        services = self.cluster.getConfigService()
+        services = self.cluster.getShuffledConfigService()
         for service in services:
             try:
                 self._long_poll(service)
@@ -153,7 +153,7 @@ class ApolloClient(object):
         time.sleep(self.timeout)
 
     def _long_poll(self, service):
-        url = '{}/notifications/v2'.format(service['instanceId'])
+        url = '{}notifications/v2'.format(service['homepageUrl'])
         notifications = []
         for key in self._notification_map:
             notification_id = self._notification_map[key]
@@ -181,7 +181,7 @@ class ApolloClient(object):
                 ns = entry['namespaceName']
                 nid = entry['notificationId']
                 logging.getLogger(__name__).info("%s has changes: notificationId=%d", ns, nid)
-                self._uncached_http_get(ns)
+                self._uncached_http_get_for_cluster(ns)
                 self._notification_map[ns] = nid
         else:
             raise Exception('Long polling returns %d: url=%s', r.status_code, r.request.url)

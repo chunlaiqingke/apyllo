@@ -1,3 +1,4 @@
+from random import shuffle
 import requests
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -16,9 +17,15 @@ class Cluster(object):
         self.ip = ip
         self._configservices = []
         self.refresh()
+        self.refreshPeriod()
     
-    def getConfigService(self):
+    def getCachedConfigService(self):
         return self._configservices
+    
+    def getShuffledConfigService(self):
+        copy = list(self._configservices)
+        shuffle(copy)
+        return copy
         
     def getConfigService(self):
         url = f"{self.meta_url}/services/config"
@@ -32,8 +39,9 @@ class Cluster(object):
             services = self.getConfigService()
             if services:
                 self._configservices = services
+                return
             time.sleep(self.sleep_time)
         raise Exception("refresh config service failed")
             
     def refreshPeriod(self):
-        schedule.every(2).minutes.do(self.refresh)
+        schedule.every(5).minutes.do(self.refresh)
