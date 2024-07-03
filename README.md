@@ -20,6 +20,15 @@ fork自： filamoon/pyapollo
     client.start()
   
   ```
+* **集群能力**
+  cluster的数据结构见 cluster.py
+
+  ```python
+  
+    client = ApolloClient(appId = '10001', config_server_url = "http://localhost:8080")
+  
+  ```
+  config_server_url 需要配置apollo的注册中心的地址，即configservice的地址，因为configservice起来之后注册中心就起来了
 
 # Reference
 Apollo : https://github.com/ctripcorp/apollo
