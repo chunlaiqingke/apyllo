@@ -116,7 +116,7 @@ class ApolloClient(object):
         if r.ok:
             data = r.json()
             self._cache[namespace] = data
-            LocalFileRepository.persistLocalCacheFile(namespace, 'json', data)
+            self.localFileRepository.storeLocalCacheFile(namespace, 'json', data)
             logging.getLogger(__name__).info('Updated local cache for namespace %s', namespace)
         else:
             raise Exception('Failed to get config from %s' % service['instanceId'])
@@ -127,7 +127,7 @@ class ApolloClient(object):
         for service in services:
             try:
                 self._uncached_http_get(service, namespace)
-                break
+                return
             except Exception as e:
                 logging.getLogger(__name__).warn("Failed to get config from %s: %s" % (service, e))
         '''降级'''
@@ -142,7 +142,7 @@ class ApolloClient(object):
             data = r.json()
             self._fireConfigChange(namespace, data['configurations'])
             self._cache[namespace] = data['configurations']
-            LocalFileRepository.persistLocalCacheFile(namespace, "properties", data['configurations'])
+            self.localFileRepository.storeLocalCacheFile(namespace, "properties", data['configurations'])
             logging.getLogger(__name__).info('Updated local cache for namespace %s release key %s: %s',
                                              namespace, data['releaseKey'],
                                              repr(self._cache[namespace]))
