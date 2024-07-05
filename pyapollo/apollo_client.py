@@ -15,7 +15,7 @@ from cluster import Cluster
 from local_file import LocalFileRepository
 
 class ApolloClient(object):
-    def __init__(self, app_id, cluster='default', config_server_url='http://localhost:8080', timeout=90, ip=None):
+    def __init__(self, app_id, cluster='default', config_server_url='http://localhost:8080', timeout=30, ip=None):
         self.config_server_url = config_server_url
         self.appId = app_id
         self.cluster = cluster
