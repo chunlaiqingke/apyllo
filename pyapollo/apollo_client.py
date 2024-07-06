@@ -16,7 +16,7 @@ from cluster import Cluster
 from local_file import LocalFileRepository
 
 class ApolloClient(object):
-    def __init__(self, app_id, cluster='default', config_server_url='http://localhost:8080', timeout=30, ip=None):
+    def __init__(self, app_id, cluster='default', config_server_url='http://localhost:8080', timeout=90, ip=None):
         self.config_server_url = config_server_url
         self.appId = app_id
         self.cluster = cluster
@@ -285,7 +285,7 @@ if __name__ == '__main__':
     listener.onChange = lambda event: print(f'onchange: {event.changes}')
     client.add_change_listener(listener)
     client.start()
-    print(client.get_value(key="someKey", auto_fetch_on_cache_miss=True))
+    print(client.get_value(key="content", namespace='jsontest.json', auto_fetch_on_cache_miss=True))
     if sys.version_info[0] < 3:
         v = raw_input('Press any key to quit...')
     else:

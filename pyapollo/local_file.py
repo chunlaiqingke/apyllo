@@ -1,6 +1,7 @@
 import platform
 import os
 from turtle import end_fill
+import logging
 
 class LocalFileRepository(object):
     """
@@ -39,7 +40,8 @@ class LocalFileRepository(object):
     
     def _transformPropertiesToApolloConfig(self, namespace_format, props):
         if namespace_format != ".properties":
-            return props.getProperty("content")
+            content = props.getProperty("content")
+            return {"content": content}
         config = {}
         for (key, value) in props.items():
             config[key] = value
@@ -51,8 +53,8 @@ class LocalFileRepository(object):
         namespace_dir = os.path.dirname(namespace_path)
         if not os.path.exists(namespace_dir):
             os.makedirs(namespace_dir)
-        with open(namespace_path, 'wb') as f:
-            props.store(f, encoding='utf-8')
+        with open(namespace_path, 'w', encoding='utf-8', newline='\r\n') as f:
+            props.store(f)
             
     def loadFromLocalCacheFile(self, namespace, namespace_format):
         props = Properties()
@@ -70,13 +72,16 @@ class Properties(object):
     
     def loadFromFile(self, file_name):
         try:
-            with open(file_name, 'rb') as f:
-                self.load(f, 'utf-8')
-        except FileNotFoundError:
-            pass
+            with open(file_name, 'r', encoding='utf-8', newline='\r\n') as f:
+                self.load(f)
+        except Exception as e:
+            logging.error('loadFromFile error: %s', file_name, e)
         
-    def load(self, stream, encoding):
-        self._props = dict(line.decode(encoding).strip().split('=', 1) for line in stream if line.strip())
+    def load(self, stream):
+        for line in list(stream):
+            line = line.strip()
+            sp = line.split('=')
+            self._props[eval(sp[0]).strip()] = eval(sp[1]).strip()
 
     def getProperty(self, key):
         return self._props.get(key)
@@ -91,9 +96,9 @@ class Properties(object):
         file_dir = os.path.dirname(file_name)
         if not os.path.exists(file_dir):
             os.makedirs(file_dir)
-        with open(file_name, 'wb') as f:
-            self.load(f, encoding)
+        with open(file_name, 'w') as f:
+            self.store(f)
 
-    def store(self, stream, encoding):
+    def store(self, stream):
         for (k, v) in self._props.items():
-            stream.write((k + "=" + v).encode(encoding))
+            stream.write(repr(k) + "=" + repr(v) + "\n")
