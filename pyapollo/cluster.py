@@ -3,6 +3,7 @@ import requests
 from concurrent.futures import ThreadPoolExecutor
 import time
 import schedule
+import logging
 
 '''
 python 客户端支持集群
@@ -27,10 +28,14 @@ class Cluster(object):
         
     def getConfigService(self):
         url = f"{self.meta_url}/services/config"
-        resp = requests.get(url, timeout=self.timeout)
-        if resp.status_code == 200:
-            services = resp.json()
-            return services
+        try:
+            resp = requests.get(url, timeout=self.timeout)
+            if resp.status_code == 200:
+                services = resp.json()
+                return services
+        except Exception as e:
+            logging.error(e)
+            return []
     
     def _refresh(self):
         for i in range(self.retries):
@@ -39,7 +44,6 @@ class Cluster(object):
                 self._configservices = services
                 return
             time.sleep(self.sleep_time)
-        raise Exception("refresh config service failed")
             
     def _refreshPeriod(self):
         schedule.every(5).minutes.do(self._refresh)

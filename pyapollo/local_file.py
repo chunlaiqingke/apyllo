@@ -38,7 +38,7 @@ class LocalFileRepository(object):
         return props
     
     def _transformPropertiesToApolloConfig(self, namespace_format, props):
-        if namespace_format != "properties":
+        if namespace_format != ".properties":
             return props.getProperty("content")
         config = {}
         for (key, value) in props.items():
@@ -76,7 +76,7 @@ class Properties(object):
             pass
         
     def load(self, stream, encoding):
-        self._props = dict(line.strip().split('=', 1) for line in stream if line.strip())
+        self._props = dict(line.decode(encoding).strip().split('=', 1) for line in stream if line.strip())
 
     def getProperty(self, key):
         return self._props.get(key)

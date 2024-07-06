@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import logging
+import os
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -99,7 +100,7 @@ class ApolloClient(object):
             except Exception as e:
                 logging.getLogger(__name__).warn("Failed to get config from %s: %s" % (service, e))
         '''降级'''
-        local_data = self.localFileRepository.loadFromLocalCacheFile(namespace, "json")
+        local_data = self.localFileRepository.loadFromLocalCacheFile(namespace, self._namespace_format(namespace))
         self._cache[namespace] = local_data
         
         data = self._cache[namespace]
@@ -109,6 +110,12 @@ class ApolloClient(object):
         else:
             return default_val
          
+    def _namespace_format(self, namespace):
+        split = os.path.splitext(namespace)
+        if split[1] == '':
+            return ".properties"
+        else:
+            return ".properties" if split[-1] == ".properties" else split[-1]
 
     def _cached_http_get(self, service, namespace='application'):
         url = '{}/configfiles/json/{}/{}/{}?ip={}'.format(service['homepageUrl'], self.appId, self.cluster, namespace, self.ip)
@@ -131,7 +138,7 @@ class ApolloClient(object):
             except Exception as e:
                 logging.getLogger(__name__).warn("Failed to get config from %s: %s" % (service, e))
         '''降级'''
-        local_data = self.localFileRepository.loadFromLocalCacheFile(namespace, "properties")
+        local_data = self.localFileRepository.loadFromLocalCacheFile(namespace, self._namespace_format(namespace))
         self._cache[namespace] = local_data
     
 
@@ -278,6 +285,7 @@ if __name__ == '__main__':
     listener.onChange = lambda event: print(f'onchange: {event.changes}')
     client.add_change_listener(listener)
     client.start()
+    print(client.get_value(key="someKey", auto_fetch_on_cache_miss=True))
     if sys.version_info[0] < 3:
         v = raw_input('Press any key to quit...')
     else:
