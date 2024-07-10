@@ -39,5 +39,44 @@ fork自： filamoon/pyapollo
 
   本地文件是在每次配置读取成功的时候去修改的
 
+* **打包**
+
+  python setup.py install
+  会出现
+  ```
+  Using /opt/anaconda3/lib/python3.11/site-packages
+  Searching for charset-normalizer==2.0.4
+  Best match: charset-normalizer 2.0.4
+  Adding charset-normalizer 2.0.4 to easy-install.pth file
+  Installing normalizer script to /opt/anaconda3/bin
+
+  Using /opt/anaconda3/lib/python3.11/site-packages
+  Finished processing dependencies for pyapollo==0.0.1.dev1
+  ```
+  这样就安装成功了，到对应的目录下查看是否有
+  然后就可以在别的python文件中import pyapollo了
+
+  如果出现no module named '自定义的module'，import的时候需要加上相对路径
+
+  ```python
+  
+    from change import ChangeListener, ConfigChange
+    from change import *
+    from cluster import Cluster
+
+    from local_file import LocalFileRepository
+  
+  ```
+  改成下面这样再试
+  ```python
+  
+    from .change import ChangeListener, ConfigChange
+    from .change import *
+    from .cluster import Cluster
+
+    from .local_file import LocalFileRepository
+  
+  ```
+
 # Reference
 Apollo : https://github.com/ctripcorp/apollo
