@@ -5,7 +5,7 @@ fork自： filamoon/pyapollo
 
 那个老哥好像不维护了，我在这维护一下，正好现在工作是做apollo
 
-新增Feature
+# 新增Feature
 * **变更监听**
 
   event的数据结构见 change.py
@@ -39,7 +39,7 @@ fork自： filamoon/pyapollo
 
   本地文件是在每次配置读取成功的时候去修改的
 
-* **打包**
+# 打包
 
   python setup.py install
   会出现
